@@ -1,0 +1,15 @@
+[
+    {
+        "image_path": "/path/to/image1.jpg",
+        "text": "Describe this image in detail."
+    },
+    {
+        "image_path": "/path/to/image2.jpg",
+        "text": "What objects are visible in this photograph?"
+    },
+    {
+        "image_path": "/path/to/image3.jpg",
+        "text": "Explain the scene shown in this image."
+    }
+]
+

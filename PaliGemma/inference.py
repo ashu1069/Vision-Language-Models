@@ -5,7 +5,7 @@ import fire
 from processing import PaliGemmaProcessor
 from gemma import KVCache
 from paligemma import PaliGemmaForConditionalGeneration, PaliGemmaConfig
-from utils import load_model
+from utils import load_hf_model
 
 
 def move_inputs_to_device(model_inputs: dict, device: str):
@@ -116,7 +116,7 @@ def main(
     temperature: float = 0.9,
     top_p: float = 0.9,
     do_sample: bool = False,
-    only_cpu: bool + False,
+    only_cpu: bool = False,
 ):
 
     device = 'cpu'
@@ -127,7 +127,7 @@ def main(
         elif torch.backend.mps.is_available():
             device = "mps"
 
-    print("Device in use: {device}")
+    print(f"Device in use: {device}")
 
     print(f"Loading Model...")
 
@@ -136,8 +136,8 @@ def main(
     model = model.to(device).eval()
 
     num_image_tokens = model.config.vision_config.num_image_tokens
-    image_size = model.vision_config.image_size
-    processor = PaliGemmaProcesor(tokenizer, num_image_tokens, image_size)
+    image_size = model.config.vision_config.image_size
+    processor = PaliGemmaProcessor(tokenizer, num_image_tokens, image_size)
 
     print("Running Inference...")
 

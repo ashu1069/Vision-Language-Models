@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import torch
 from torch import nn
 from typing import Optional, Tuple, List
 from torch.nn import CrossEntropyLoss
 import math
 from siglip import SiglipVisionConfig, SiglipVisionModel
-from gemma import GemmaConfig, GemmaForCausalLM
+from gemma import GemmaConfig, GemmaForCausalLM, KVCache
 
 
 class PaliGemmaConfig():
@@ -34,6 +36,10 @@ class PaliGemmaConfig():
         self.vision_config = SiglipVisionConfig(**vision_config)
         self.text_config = text_config
 
+        # Ensure num_attention_layers is set (defaults to num_hidden_layers if not provided)
+        if 'num_attention_layers' not in text_config:
+            text_config['num_attention_layers'] = text_config.get('num_hidden_layers')
+        
         self.text_config = GemmaConfig(**text_config, pad_token_id = pad_token_id)
         self.vocab_size = self.text_config.vocab_size
 
@@ -116,7 +122,7 @@ class PaliGemmaForConditionalGeneration(nn.Module):
         final_embedding = torch.where(pad_mask_expanded, torch.zeros_like(final_embedding), final_embedding)
 
         # Create the attention mask
-        min_dtype = torch.info(dtype).min
+        min_dtype = torch.finfo(dtype).min
         q_len = inputs_embeds.shape[1]
 
         if kv_cache is None or kv_cache.num_items() == 0:
@@ -148,7 +154,7 @@ class PaliGemmaForConditionalGeneration(nn.Module):
         else:
             # create a position_ids based on the size of attention mask
             # For masked tokens, use the number 1 as position
-            position_ids = (attention_mask.cumsum(-1)),masked_fill_((attention_mask == 0), 1).to(device)
+            position_ids = attention_mask.cumsum(-1).masked_fill_((attention_mask == 0), 1).to(device)
 
         return final_embedding, causal_mask, position_ids
 

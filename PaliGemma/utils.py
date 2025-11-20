@@ -6,10 +6,10 @@ from safetensors import safe_open
 from typing import Tuple
 import os
 
-def load_hf_model(model: str, device: str) -> Tuple[PaliGemmaForConditionalGeneration, AutoTokenizer]:
+def load_hf_model(model_path: str, device: str) -> Tuple[PaliGemmaForConditionalGeneration, AutoTokenizer]:
     # Load the tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_path, padding_side = "right")
-    assert tokenizer.padding_size == "right"
+    assert tokenizer.padding_side == "right"
 
     # Find all the *.safetensors files
     safetensors_files = glob.glob(os.path.join(model_path, "*.safetensors"))

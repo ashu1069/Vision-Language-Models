@@ -100,7 +100,7 @@ class PaliGemmaProcessor:
 
         self.tokenizer = tokenizer
 
-    def _call__(
+    def __call__(
         self,
         text: List[str],
         images: List[Image.Image],
@@ -109,7 +109,7 @@ class PaliGemmaProcessor:
     ) -> dict:
         assert len(images) == 1 and len(text) == 1, f"Received {len(images)} images for {len(text)} prompts."
 
-        pixel_values = process_images(
+        pixel_values = process_image(
             images,
             size = (self.image_size, self.image_size),
             resample = Image.Resampling.BICUBIC,

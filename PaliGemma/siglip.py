@@ -17,17 +17,16 @@ class SiglipVisionConfig:
         num_image_tokens: int=None,
         **kwargs
     ):
-    super.__init__()
-    self.hidden_size=hidden_size
-    self.intermediate_size=intermediate_size
-    self.num_hidden_layers=num_hidden_layers
-    self.num_attention_heads=num_attention_heads
-    self.num_channels=num_channels
-    self.image_size=image_size
-    self.patch_size=patch_size
-    self.attention_dropout=attention_dropout
-    self.layer_norm_eps=layer_norm_eps
-    self.num_image_tokens=num_image_tokens
+        self.hidden_size=hidden_size
+        self.intermediate_size=intermediate_size
+        self.num_hidden_layers=num_hidden_layers
+        self.num_attention_heads=num_attention_heads
+        self.num_channels=num_channels
+        self.image_size=image_size
+        self.patch_size=patch_size
+        self.attention_dropout=attention_dropout
+        self.layer_norm_eps=layer_norm_eps
+        self.num_image_tokens=num_image_tokens
 
 class SiglipVisionEmbeddings(nn.Module):
     def __init__(self, config: SiglipVisionConfig):
@@ -41,7 +40,8 @@ class SiglipVisionEmbeddings(nn.Module):
             in_channels = config.num_channels,
             out_channels = self.embed_dim,
             kernel_size = self.patch_size,
-            paddings = "valid" # indicates no padding is added
+            stride = self.patch_size,
+            padding = 0  # "valid" padding means no padding
         )
 
         self.num_patches = (self.image_size // self.patch_size) ** 2
@@ -49,8 +49,8 @@ class SiglipVisionEmbeddings(nn.Module):
         self.position_embedding = nn.Embedding(self.num_positions, self.embed_dim)
         self.register_buffer(
             "position_ids",
-            torch.arange(self.num_positions).expand((1, -1))
-            persistent=False
+            torch.arange(self.num_positions).expand((1, -1)),
+            persistent=False,
         )
     def forward(self, pixel_values: torch.FloatTensor) -> torch.Tensor:
         _, _, height, width = pixel_values.shape # [B, C, H, W]
@@ -98,7 +98,7 @@ class SiglipAttention(nn.Module):
         key_states = key_states.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1,2)
         value_states = value_states.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1,2)
 
-        att_weights = (torch.matmul(query_states, key_states.transpose(2,3)) * self.scale) # [B, n_heads, n_patches, n_patches]
+        attn_weights = (torch.matmul(query_states, key_states.transpose(2,3)) * self.scale) # [B, n_heads, n_patches, n_patches]
         # apply the attention mask -> multiply by values
         if attn_weights.size() != (batch_size, self.num_heads, seq_len, seq_len):
             raise ValueError(
@@ -116,7 +116,7 @@ class SiglipAttention(nn.Module):
 
         if attn_output.size() != (batch_size, self.num_heads, seq_len, self.head_dim):
             raise ValueError(
-                f"`attn_output` should be of size {(atch_size, self.num_heads, seq_len, self.head_dim)}, but is"
+                f"`attn_output` should be of size {(batch_size, self.num_heads, seq_len, self.head_dim)}, but is"
                 f"{attn_output.size()}"
             )
 
@@ -180,13 +180,13 @@ class SiglipEncoderLayer(nn.Module):
 
 class SiglipEncoder(nn.Module):
     def __init__(self, config: SiglipVisionConfig):
-        super().__init()
+        super().__init__()
         self.config = config
         self.layers = nn.ModuleList(
             [SiglipEncoderLayer(config) for _ in range(config.num_hidden_layers)]
         )
     def forward(self, inputs_embeds: torch.Tensor) -> torch.Tensor:
-        hidden_states = input_embeds
+        hidden_states = inputs_embeds
 
         for encoder_layer in self.layers:
             hidden_states = encoder_layer(hidden_states)
@@ -207,7 +207,7 @@ class SiglipVisionTransformer(nn.Module):
         # pixel_values: [B, C, H, W] -> [B, n_patches, embed_dim]
         hidden_states = self.embeddings(pixel_values)
 
-        last_hidden_state = self.encoder(input_embeds=hidden_states)
+        last_hidden_state = self.encoder(inputs_embeds=hidden_states)
 
         last_hidden_state = self.post_layernorm(last_hidden_state)
 
