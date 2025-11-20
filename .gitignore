@@ -51,6 +51,8 @@ coverage.xml
 .pytest_cache/
 cover/
 
+
+
 # Translations
 *.mo
 *.pot
@@ -172,3 +174,23 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Model weights and checkpoints
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.pb
+*.onnx
+*.pkl
+*.joblib
+*.tflite
+*.pth.tar
+*.weights
+models/
+checkpoints/
+weights/
+*.model
+*.weights.*
