@@ -30,6 +30,13 @@ class KVCache():
         else:
             # ...otherwise we concatenate the new keys with the existing ones
             # each tensor has shape: [b, num_heads_kv, seq_len, head_dim]
+            # Ensure dtype and device match for mixed precision and multi-GPU
+            cache_key_device = self.key_cache[layer_idx].device
+            cache_key_dtype = self.key_cache[layer_idx].dtype
+            cache_value_device = self.value_cache[layer_idx].device
+            cache_value_dtype = self.value_cache[layer_idx].dtype
+            key_states = key_states.to(device=cache_key_device, dtype=cache_key_dtype)
+            value_states = value_states.to(device=cache_value_device, dtype=cache_value_dtype)
             self.key_cache[layer_idx] = torch.cat([self.key_cache[layer_idx], key_states], dim = -2)
             self.value_cache[layer_idx] = torch.cat([self.value_cache[layer_idx], value_states], dim = -2)
 
@@ -356,6 +363,16 @@ class GemmaModel(nn.Module):
         hidden_states = hidden_states * normalizer
 
         for decoder_layer in self.layers:
+            # Move hidden_states to the device of the current layer (for multi-GPU)
+            layer_device = next(decoder_layer.parameters()).device
+            hidden_states = hidden_states.to(layer_device)
+            
+            # Move attention_mask and position_ids if needed
+            if attention_mask is not None:
+                attention_mask = attention_mask.to(layer_device)
+            if position_ids is not None:
+                position_ids = position_ids.to(layer_device)
+            
             # [B, seq_len, hidden_size]
             hidden_states = decoder_layer(
                 hidden_states,
@@ -364,6 +381,9 @@ class GemmaModel(nn.Module):
                 kv_cache=kv_cache
             )
 
+        # Move to norm device
+        norm_device = next(self.norm.parameters()).device
+        hidden_states = hidden_states.to(norm_device)
         hidden_states = self.norm(hidden_states)
 
         return hidden_states
@@ -400,6 +420,9 @@ class GemmaForCausalLM(nn.Module):
         )
 
         hidden_states = outputs
+        # Move hidden_states to lm_head device (for multi-GPU)
+        lm_head_device = next(self.lm_head.parameters()).device
+        hidden_states = hidden_states.to(lm_head_device)
         logits = self.lm_head(hidden_states)
         logits = logits.float()
 
